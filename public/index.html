@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Chat widget</title>
+  <style>
+    #chat { width:360px; border:1px solid #ddd; padding:12px; border-radius:8px; font-family: Arial, sans-serif; }
+    .msg { margin:8px 0; padding:8px; border-radius:8px; max-width: 90%; }
+    .user { background:#e6f4ff; margin-left:auto; text-align:right; }
+    .bot  { background:#f1f1f1; margin-right:auto; text-align:left; }
+    #controls { display:flex; gap:8px; margin-top:8px; }
+    input { flex:1; padding:8px; }
+    button { padding:8px 12px; }
+  </style>
+</head>
+<body>
+  <div id="chat">
+    <div id="messages" style="height:240px; overflow:auto"></div>
+    <div id="controls">
+      <input id="input" placeholder="Ask me anything..." />
+      <button id="send">Send</button>
+    </div>
+  </div>
+
+<script>
+  const messagesEl = document.getElementById('messages');
+  const inputEl = document.getElementById('input');
+  const sendBtn = document.getElementById('send');
+  const history = [];
+
+  function append(role, text){
+    const d = document.createElement('div');
+    d.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
+    d.textContent = text;
+    messagesEl.appendChild(d);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  sendBtn.addEventListener('click', send);
+  inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); });
+
+  async function send(){
+    const text = inputEl.value.trim(); if (!text) return;
+    append('user', text); inputEl.value = '';
+    append('bot', 'Typing...');
+
+    try {
+      // Replace this URL with your deployed Vercel project domain if needed
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, history })
+      });
+      const data = await res.json();
+      // remove "Typing..."
+      const last = messagesEl.lastChild;
+      if (last && last.textContent === 'Typing...') last.remove();
+
+      append('bot', data.reply || 'No reply');
+      history.push({ role: 'user', content: text });
+      history.push({ role: 'assistant', content: data.reply || '' });
+      if (history.length > 10) history.splice(0, history.length - 10);
+    } catch (err) {
+      console.error(err);
+      append('bot', 'Error contacting server.');
+    }
+  }
+</script>
+</body>
+</html>
